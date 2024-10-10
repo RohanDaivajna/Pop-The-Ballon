@@ -1,0 +1,168 @@
+import java.awt.*;
+import java.awt.event.*;
+import java.util.ArrayList;
+import java.util.Random;
+import javax.swing.*;
+
+class Balloon {
+    int x, y;
+    final int speed = 2; // Speed of the balloon
+
+    public Balloon(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    public void move() {
+        y -= speed; // Move upward
+    }
+}
+
+class GamePanel extends JPanel {
+    private ArrayList<Balloon> balloons;
+    private Random random;
+    private Image balloonImage;
+    private Image backgroundImage; // Background image
+    private int score;
+    private int missedBalloons; // Counter for missed balloons
+    private boolean gameOver; // Game over flag
+    private Timer timer; // Timer for balloon movement
+
+    public GamePanel() {
+        balloons = new ArrayList<>();
+        random = new Random();
+        score = 0;
+        missedBalloons = 0; // Initialize missed balloons counter
+        gameOver = false; // Initialize game over flag
+
+        // Load balloon image and background image
+        balloonImage = new ImageIcon("balloon.png").getImage();
+        backgroundImage = new ImageIcon("bg.jpg").getImage(); // Load your background image
+
+        // Generate initial balloons
+        for (int i = 0; i < 3; i++) {
+            addBalloon();
+        }
+
+        // Timer to update balloon positions
+        timer = new Timer(20, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                update();
+                repaint(); // Schedule a repaint
+            }
+        });
+        timer.start();
+
+        // Mouse listener for balloon clicks
+        addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                if (!gameOver) {
+                    checkBalloonClick(e.getX(), e.getY());
+                }
+            }
+        });
+    }
+
+    private void update() {
+        if (!gameOver) {
+            for (Balloon balloon : balloons) {
+                balloon.move();
+                
+                // Check if balloon has gone off the top of the window
+                if (balloon.y < -50) {
+                    missedBalloons++; // Increment missed balloons counter
+                    if (missedBalloons > 10) {
+                        gameOver = true; // Set game over
+                        timer.stop(); // Stop the timer
+                    }
+                    balloon.y = 672; // Reset to bottom
+                    balloon.x = random.nextInt(1024 - 40); // New random X position
+                }
+            }
+
+            // Add a new balloon less frequently
+            if (random.nextInt(50) == 0) {
+                addBalloon();
+            }
+        }
+    }
+
+    private void addBalloon() {
+        int x;
+        boolean overlapping;
+        do {
+            x = random.nextInt(1024 - 40); // New random X position to prevent overflow
+            overlapping = false;
+            for (Balloon balloon : balloons) {
+                if (Math.abs(balloon.x - x) < 30) { // Check for overlap
+                    overlapping = true;
+                    break;
+                }
+            }
+        } while (overlapping);
+        
+        balloons.add(new Balloon(x, 672)); // Add balloon at bottom
+    }
+
+    private void checkBalloonClick(int mouseX, int mouseY) {
+        for (Balloon balloon : balloons) {
+            // Check if the mouse click is within the bounds of the balloon
+            if (mouseX >= balloon.x && mouseX <= balloon.x + 40 &&
+                mouseY >= balloon.y && mouseY <= balloon.y + 70) {
+                balloons.remove(balloon); // Remove the balloon
+                score++; // Update score
+                break; // Exit the loop after the first click
+            }
+        }
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+
+        // Draw the background image
+        g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+
+        // Draw the score
+        g.setColor(Color.BLACK);
+        g.setFont(new Font("Arial", Font.BOLD, 24));
+        g.drawString("Score: " + score, 10, 30);
+
+        // Draw missed balloons
+        g.drawString("Missed: " + missedBalloons, 10, 60);
+
+        // Draw balloons
+        for (Balloon balloon : balloons) {
+            g.drawImage(balloonImage, balloon.x, balloon.y, 40, 70, this); // Draw balloon image
+        }
+
+        // Display Game Over message
+        if (gameOver) {
+            g.setColor(Color.RED);
+            g.setFont(new Font("Arial", Font.BOLD, 48));
+            g.drawString("Game Over!", 300, 300);
+        }
+    }
+}
+
+public class GameWindow extends JFrame {
+    public GameWindow() {
+        setTitle("Balloon Game");
+        setSize(1024, 672); // Set window size to 1024x672
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+        // Disable window resizing
+        setResizable(false);
+
+        GamePanel panel = new GamePanel();
+        add(panel);
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        new GameWindow();
+    }
+}
